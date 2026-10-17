@@ -14,15 +14,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Vendosja e Java (JDK 17)
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Vendosja e Android SDK / NDK
-        uses: android-actions/setup-android@v3
-
       - name: Vendosja e Mjedisit Qt
         uses: jurplel/install-qt-action@v3
         with:
@@ -32,7 +23,9 @@ jobs:
 
       - name: Konfigurimi me CMake
         run: |
-          qt-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          qt-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+            -DANDROID_SDK_ROOT="$ANDROID_SDK_ROOT" \
+            -DANDROID_NDK_ROOT="$ANDROID_NDK_LATEST_HOME"
 
       - name: Ndërtimi i APK-së
         run: |
