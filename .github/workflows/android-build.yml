@@ -14,10 +14,19 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Vendosja e Mjedisit Qt dhe Android
+      - name: Vendosja e Java (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Vendosja e Android SDK / NDK
+        uses: android-actions/setup-android@v3
+
+      - name: Vendosja e Mjedisit Qt
         uses: jurplel/install-qt-action@v3
         with:
-          qt-version: '6.6.1'
+          version: '6.6.1'
           target: 'android'
           arch: 'android_arm64_v8a'
 
