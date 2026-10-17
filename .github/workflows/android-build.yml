@@ -41,7 +41,7 @@ jobs:
           cmake --build build --target apk
 
       - name: Ruajtja e APK-së si Artifact
-        uses: upload/upload-artifact@v4
+        uses: actions/upload-artifact@v4
         with:
           name: biblioteka-apk
           path: build/**/*.apk
