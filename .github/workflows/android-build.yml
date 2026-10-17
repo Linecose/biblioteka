@@ -15,10 +15,11 @@ jobs:
           submodules: recursive
 
       - name: Vendosja e Mjedisit Qt dhe Android
-        uses: PyQt5/action-setup-qt@v3
+        uses: jurplel/install-qt-action@v3
         with:
           qt-version: '6.6.1'
           target: 'android'
+          arch: 'android_arm64_v8a'
 
       - name: Konfigurimi me CMake
         run: |
