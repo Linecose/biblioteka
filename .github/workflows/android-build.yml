@@ -1,0 +1,35 @@
+name: Kompilo Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Liferimi i Kodit (Checkout)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Vendosja e Mjedisit Qt dhe Android
+        uses: PyQt5/action-setup-qt@v3
+        with:
+          qt-version: '6.6.1'
+          target: 'android'
+
+      - name: Konfigurimi me CMake
+        run: |
+          qt-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Ndërtimi i APK-së
+        run: |
+          cmake --build build --target apk
+
+      - name: Ruajtja e APK-së si Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: biblioteka-apk
+          path: build/**/*.apk
