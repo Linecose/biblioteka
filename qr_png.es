@@ -1,10 +1,11 @@
 # qr_png.es - QR "placeholder": modeli dekorativ i njejte me versionin Flutter (25x25 katrore,
-# tre kendet e medha). NUK eshte kod QR real dhe nuk skanohet. Kthen nje imazh PNG ne memorie
-# (pa asnje paketë te jashtme: vetem 'zlib' i Node).
+# tre kendet e medha). NUK eshte kod QR real dhe nuk skanohet. Kthen nje imazh PNG ne memorie.
 #
-# Per QR real ne versionin final: zevendeso kete me paketen npm "qrcode" (QRCode.toBuffer).
+# PA varesi nga Node: perdor vetem Uint8Array dhe 'zlib' me blloqe te pangjeshura (stored),
+# ndaj funksionon njesoj ne desktop (Node) dhe ne Android (QuickJS).
+#
+# Per QR real ne versionin final: zevendeso kete me nje biblioteke QR ne JS te pastert.
 
-konstante zlib = perfshi("zlib")
 konstante { NGJYRAT } = perfshi("./stili.es")
 
 konstante KATRORE = 25
@@ -26,12 +27,69 @@ funksion crc32(buffer) {
     kthe (c ^ 0xFFFFFFFF) >>> 0
 }
 
+# --- Ndihmese per bajte (Uint8Array) ---
+funksion bajte_ascii(tekst_ascii) {
+    konstante dalja = i_ri Uint8Array(tekst_ascii.length)
+    per (leje i = 0; i < tekst_ascii.length; i++) { dalja[i] = tekst_ascii.charCodeAt(i) }
+    kthe dalja
+}
+
+funksion ngjit_bajte(lista) {
+    leje gjatesia_totale = 0
+    per (konstante pjesa te lista) { gjatesia_totale += pjesa.length }
+    konstante dalja = i_ri Uint8Array(gjatesia_totale)
+    leje pozicioni = 0
+    per (konstante pjesa te lista) { dalja.set(pjesa, pozicioni); pozicioni += pjesa.length }
+    kthe dalja
+}
+
+funksion shkruaj_u32_be(vargu, pozicioni, vlera) {
+    vargu[pozicioni] = (vlera >>> 24) & 0xFF
+    vargu[pozicioni + 1] = (vlera >>> 16) & 0xFF
+    vargu[pozicioni + 2] = (vlera >>> 8) & 0xFF
+    vargu[pozicioni + 3] = vlera & 0xFF
+}
+
+funksion adler32(bajtet) {
+    leje a = 1
+    leje b = 0
+    per (leje i = 0; i < bajtet.length; i++) {
+        a = (a + bajtet[i]) % 65521
+        b = (b + a) % 65521
+    }
+    kthe ((b << 16) | a) >>> 0
+}
+
+# Rrjedhe zlib me blloqe "stored" (pa ngjeshje): 0x78 0x01 + blloqe <= 65535 bajte + Adler-32.
+funksion zlib_pa_ngjeshje(bajtet) {
+    konstante MAKS = 65535
+    konstante numri_blloqeve = Math.max(1, Math.ceil(bajtet.length / MAKS))
+    konstante dalja = i_ri Uint8Array(2 + bajtet.length + numri_blloqeve * 5 + 4)
+    dalja[0] = 0x78
+    dalja[1] = 0x01
+    leje poz = 2
+    per (leje blloku = 0; blloku < numri_blloqeve; blloku++) {
+        konstante fillimi = blloku * MAKS
+        konstante gjatesia = Math.min(MAKS, bajtet.length - fillimi)
+        dalja[poz++] = (blloku === numri_blloqeve - 1) ? 1 : 0
+        dalja[poz++] = gjatesia & 0xFF
+        dalja[poz++] = (gjatesia >>> 8) & 0xFF
+        dalja[poz++] = (~gjatesia) & 0xFF
+        dalja[poz++] = ((~gjatesia) >>> 8) & 0xFF
+        dalja.set(bajtet.subarray(fillimi, fillimi + gjatesia), poz)
+        poz += gjatesia
+    }
+    shkruaj_u32_be(dalja, poz, adler32(bajtet))
+    kthe dalja
+}
+
 funksion pjese_png(lloji, te_dhenat) {
-    konstante gjatesia = Buffer.alloc(4)
-    gjatesia.writeUInt32BE(te_dhenat.length, 0)
-    konstante pjesa_crc = Buffer.alloc(4)
-    pjesa_crc.writeUInt32BE(crc32(Buffer.concat([Buffer.from(lloji, "ascii"), te_dhenat])), 0)
-    kthe Buffer.concat([gjatesia, Buffer.from(lloji, "ascii"), te_dhenat, pjesa_crc])
+    konstante lloji_bajte = bajte_ascii(lloji)
+    konstante gjatesia = i_ri Uint8Array(4)
+    shkruaj_u32_be(gjatesia, 0, te_dhenat.length)
+    konstante pjesa_crc = i_ri Uint8Array(4)
+    shkruaj_u32_be(pjesa_crc, 0, crc32(ngjit_bajte([lloji_bajte, te_dhenat])))
+    kthe ngjit_bajte([gjatesia, lloji_bajte, te_dhenat, pjesa_crc])
 }
 
 funksion kendi(r, k) {
@@ -81,7 +139,7 @@ funksion krijo_qr_png(te_dhenat, madhesia_e_deshiruar) {
 
     konstante e_erret = [0x1F, 0x24, 0x37]   # NGJYRAT.tekst
     konstante rreshti_bajte = 1 + madhesia * 3
-    konstante raw = Buffer.alloc(rreshti_bajte * madhesia, 0xFF)   # bardhe
+    konstante raw = i_ri Uint8Array(rreshti_bajte * madhesia).fill(0xFF)   # bardhe
     per (leje y = 0; y < madhesia; y++) {
         konstante baza = y * rreshti_bajte
         raw[baza] = 0                                  # filtri "None"
@@ -94,16 +152,16 @@ funksion krijo_qr_png(te_dhenat, madhesia_e_deshiruar) {
         }
     }
 
-    konstante ihdr = Buffer.alloc(13)
-    ihdr.writeUInt32BE(madhesia, 0)
-    ihdr.writeUInt32BE(madhesia, 4)
+    konstante ihdr = i_ri Uint8Array(13)
+    shkruaj_u32_be(ihdr, 0, madhesia)
+    shkruaj_u32_be(ihdr, 4, madhesia)
     ihdr[8] = 8     # thellesia e bitit
     ihdr[9] = 2     # RGB
-    konstante buffer = Buffer.concat([
-        Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
+    konstante buffer = ngjit_bajte([
+        i_ri Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
         pjese_png("IHDR", ihdr),
-        pjese_png("IDAT", zlib.deflateSync(raw)),
-        pjese_png("IEND", Buffer.alloc(0))
+        pjese_png("IDAT", zlib_pa_ngjeshje(raw)),
+        pjese_png("IEND", i_ri Uint8Array(0))
     ])
     kthe { buffer, madhesia }
 }
