@@ -14,6 +14,10 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Fshirja e Android SDK 36 te dëmtuar
+        run: |
+          rm -rf "$ANDROID_SDK_ROOT/platforms/android-36"*
+
       - name: Vendosja e Mjedisit Qt (Desktop)
         uses: jurplel/install-qt-action@v3
         with:
