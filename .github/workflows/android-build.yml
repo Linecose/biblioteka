@@ -14,8 +14,9 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Fshirja e Android SDK 36 te dëmtuar
+      - name: Pastrimi i SDK-ve problematike (35 dhe 36)
         run: |
+          rm -rf "$ANDROID_SDK_ROOT/platforms/android-35"*
           rm -rf "$ANDROID_SDK_ROOT/platforms/android-36"*
 
       - name: Vendosja e Mjedisit Qt (Desktop)
@@ -39,8 +40,8 @@ jobs:
             -DANDROID_NDK_ROOT="$ANDROID_NDK_LATEST_HOME" \
             -DQT_HOST_PATH="/home/runner/work/biblioteka/Qt/6.6.1/gcc_64" \
             -DANDROID_PLATFORM=android-34 \
-            -DQT_ANDROID_TARGET_SDK_VERSION=34 \
-            -DQT_ANDROID_COMPILE_SDK_VERSION=34
+            -DQT_ANDROID_COMPILE_SDK_VERSION=34 \
+            -DQT_ANDROID_TARGET_SDK_VERSION=34
 
       - name: Ndërtimi i APK-së
         run: |
